@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FlexMeters</title>
+<meta name="description" content="A compact, colour-coded meter viewer for FlexRadio. Every meter your radio has, only the ones you want.">
+<meta property="og:title" content="FlexMeters">
+<meta property="og:description" content="Every meter your FlexRadio has. Only the ones you want.">
+<meta property="og:image" content="https://va3mw.github.io/FlexMeters/screenshot-picker.jpg">
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<style>
+:root {
+  --bg: #0f1218;
+  --bg2: #151a23;
+  --card: #1a202b;
+  --line: #2a3242;
+  --text: #e3e9f3;
+  --dim: #94a1b8;
+  --faint: #5e6a82;
+  --slc: #3fb6ff;
+  --tx: #ff8a3d;
+  --rad: #b48cff;
+  --cod: #3ddc84;
+  --amp: #ffc23d;
+  --bad: #ff5468;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 16px/1.6 "Segoe UI", system-ui, -apple-system, sans-serif;
+  overflow-x: hidden;
+}
+a { color: var(--slc); text-decoration: none; }
+a:hover { text-decoration: underline; }
+code, pre { font-family: "Cascadia Mono", Consolas, ui-monospace, monospace; font-size: 14px; }
+code { background: #ffffff10; padding: 1px 6px; border-radius: 4px; }
+.wrap { max-width: 1040px; margin: 0 auto; padding: 0 20px; }
+
+/* ---- hero ---- */
+header {
+  position: relative; padding: 64px 0 40px; text-align: center;
+  background:
+    radial-gradient(600px 300px at 15% 0%, #3fb6ff22, transparent 70%),
+    radial-gradient(600px 300px at 85% 10%, #ff8a3d22, transparent 70%),
+    radial-gradient(500px 260px at 50% 100%, #b48cff1a, transparent 70%);
+}
+.logo { width: 88px; height: 88px; filter: drop-shadow(0 10px 30px #0008); }
+h1 {
+  font-size: clamp(40px, 7vw, 64px); line-height: 1.05; margin: 16px 0 10px; letter-spacing: -1px;
+  background: linear-gradient(90deg, var(--slc), var(--rad) 50%, var(--tx));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.tag { font-size: clamp(18px, 2.6vw, 22px); color: var(--text); margin: 0 auto 8px; max-width: 640px; }
+.sub { color: var(--dim); margin: 0 auto 28px; max-width: 600px; }
+.btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.btn {
+  display: inline-flex; align-items: center; gap: 8px; padding: 12px 22px; border-radius: 10px;
+  font-weight: 600; border: 1px solid var(--line); color: var(--text); background: var(--card);
+}
+.btn:hover { text-decoration: none; border-color: var(--slc); }
+.btn.go { background: linear-gradient(135deg, #1d7fd1, #3fb6ff); border-color: #3fb6ff; color: #fff; box-shadow: 0 8px 24px #3fb6ff33; }
+.btn.go:hover { filter: brightness(1.08); }
+.meta { margin-top: 14px; color: var(--faint); font-size: 14px; }
+.pill { display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase;
+  color: var(--amp); border: 1px solid #ffc23d55; background: #ffc23d14; border-radius: 99px; padding: 2px 10px; margin-bottom: 10px; }
+
+.shot {
+  margin: 40px auto 0; max-width: 820px; border-radius: 12px; overflow: hidden;
+  border: 1px solid var(--line); box-shadow: 0 30px 80px #000a, 0 0 0 6px #ffffff06;
+}
+.shot img { display: block; width: 100%; height: auto; }
+.bar { height: 30px; background: #1b2130; display: flex; align-items: center; gap: 7px; padding: 0 12px; border-bottom: 1px solid var(--line); }
+.bar i { width: 11px; height: 11px; border-radius: 50%; background: #ff5f57; }
+.bar i:nth-child(2) { background: #febc2e; } .bar i:nth-child(3) { background: #28c840; }
+.bar span { margin-left: 8px; color: var(--faint); font-size: 12px; }
+
+/* ---- sections ---- */
+section { padding: 64px 0; }
+section.alt { background: var(--bg2); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+h2 { font-size: 30px; margin: 0 0 8px; letter-spacing: -.3px; }
+.lead { color: var(--dim); margin: 0 0 32px; max-width: 680px; }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+.card {
+  background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px;
+  border-top: 3px solid var(--c);
+}
+.card h3 { margin: 0 0 6px; font-size: 17px; display: flex; align-items: center; gap: 10px; }
+.card h3 b { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; font-size: 15px;
+  background: color-mix(in srgb, var(--c) 20%, transparent); color: var(--c); }
+.card p { margin: 0; color: var(--dim); font-size: 15px; }
+
+.split { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; }
+.split .shot { margin: 0; }
+@media (max-width: 760px) { .split { grid-template-columns: 1fr; } }
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 0; }
+.chip { font-size: 13px; padding: 3px 10px; border-radius: 6px; font-weight: 600;
+  color: var(--c); background: color-mix(in srgb, var(--c) 16%, transparent); }
+
+/* colour legend */
+.legend { display: grid; gap: 10px; margin-top: 8px; }
+.lg { display: grid; grid-template-columns: 120px 1fr; gap: 12px; align-items: center; font-size: 14px; color: var(--dim); }
+.lg .track { height: 12px; border-radius: 4px; background: #0d1016; overflow: hidden; }
+.lg .fill { height: 100%; border-radius: 4px; }
+
+table { width: 100%; border-collapse: collapse; font-size: 15px; }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--dim); font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: .5px; }
+td code { overflow-wrap: anywhere; }
+.tbl { background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow-x: auto; }
+
+pre { background: #0b0e13; border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; overflow-x: auto; margin: 0 0 16px; color: #cfe3ff; }
+pre .c { color: var(--faint); }
+
+.tested { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.tested div { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+.tested b { display: block; }
+.tested span { color: var(--dim); font-size: 14px; }
+.ok { color: var(--cod); } .todo { color: var(--amp); }
+
+footer { padding: 36px 0 48px; color: var(--faint); font-size: 14px; text-align: center; }
+footer img { width: 28px; vertical-align: middle; margin-right: 6px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <img class="logo" src="logo.svg" alt="">
+    <h1>FlexMeters</h1>
+    <p class="tag">Every meter your FlexRadio has. Only the ones you want.</p>
+    <p class="sub">A small, colour-coded meter panel for FLEX-6000, FLEX-8000 and Aurora radios. Tick the meters you care about and get dense, live rows with peak hold, without the clutter.</p>
+    <span class="pill">Early preview · v0.1.0</span>
+    <div class="btns">
+      <a class="btn go" href="https://github.com/va3mw/FlexMeters/releases/latest/download/FlexMeters.exe">⬇ Download for Windows</a>
+      <a class="btn" href="https://github.com/va3mw/FlexMeters">View on GitHub</a>
+    </div>
+    <div class="meta">Windows 10/11 · single .exe, no installer · free · receive-only</div>
+    <div class="shot">
+      <div class="bar"><i></i><i></i><i></i><span>FlexMeters 0.1.0</span></div>
+      <img src="screenshot-picker.jpg" width="800" height="440" alt="FlexMeters with the meter picker open: slice, transmit, amplifier, radio and codec meters as coloured bars">
+    </div>
+  </div>
+</header>
+
+<section>
+  <div class="wrap">
+    <h2>What it does</h2>
+    <p class="lead">FlexMeters connects to your radio on the LAN as a quiet, extra client. It lists every meter the radio announces, from signal level and SWR to PA FET temperature, and shows just the ones you pick.</p>
+    <div class="grid">
+      <div class="card" style="--c: var(--slc)"><h3><b>◎</b>Finds every meter</h3><p>Radios on your network show up automatically. Connect and the full meter list appears, grouped by slice, transmit, amplifier, radio and codec. Hover a meter for the radio's own description.</p></div>
+      <div class="card" style="--c: var(--tx)"><h3><b>☰</b>Pick and arrange</h3><p>Tick meters in the picker, drag rows into any order, and click a bar to set its range. Then close the picker and keep only the meters on screen.</p></div>
+      <div class="card" style="--c: var(--cod)"><h3><b>▮</b>Colour that means something</h3><p>Signal goes green to amber to red. Power is orange, SWR has green, amber and red zones, temperature runs cool to hot, and supply volts and amps get their own hues. Every bar has a peak-hold marker.</p></div>
+      <div class="card" style="--c: var(--rad)"><h3><b>⇄</b>Follows your station</h3><p>It binds to your SmartSDR or Maestro station, so "Slice A" means your slice A. Other operators' slices stay hidden unless you ask for them.</p></div>
+      <div class="card" style="--c: var(--amp)"><h3><b>↻</b>Remembers everything</h3><p>Your radio, station, meters, order and ranges are saved. A meter whose slice closes goes grey and comes back when the slice reopens. If the radio gets a new IP address, FlexMeters finds it again.</p></div>
+      <div class="card" style="--c: var(--bad)"><h3><b>⌀</b>Receive-only</h3><p>It never transmits and never changes radio settings. It only subscribes to status, registers a UDP port for meter data, and binds to a station.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="alt">
+  <div class="wrap split">
+    <div>
+      <h2>Small enough to live in a corner</h2>
+      <p class="lead" style="margin-bottom: 18px">Close the picker and FlexMeters shrinks to a tidy strip of meters. Park it beside your logger or on a second screen. Rows are 24&nbsp;px tall, so a dozen meters fit in a small window.</p>
+      <div class="legend">
+        <div class="lg">Signal (dB)<div class="track"><div class="fill" style="width:62%;background:linear-gradient(90deg,#1fa865,#3ddc84)"></div></div></div>
+        <div class="lg">Level near top<div class="track"><div class="fill" style="width:94%;background:linear-gradient(90deg,#3ddc84,#ffc23d 80%,#ff5468)"></div></div></div>
+        <div class="lg">Power (W)<div class="track"><div class="fill" style="width:78%;background:linear-gradient(90deg,#ff6a2b,#ffb03d)"></div></div></div>
+        <div class="lg">SWR 1.8<div class="track"><div class="fill" style="width:40%;background:#ffc23d"></div></div></div>
+        <div class="lg">Temperature<div class="track"><div class="fill" style="width:45%;background:hsl(105 85% 55%)"></div></div></div>
+        <div class="lg">Volts / Amps<div class="track"><div class="fill" style="width:70%;background:linear-gradient(90deg,#3d7bff,#6fb2ff)"></div></div></div>
+      </div>
+    </div>
+    <div class="shot">
+      <div class="bar"><i></i><i></i><i></i><span>Compact view</span></div>
+      <img src="screenshot-compact.jpg" width="520" height="380" alt="FlexMeters compact view with the picker closed">
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Getting started</h2>
+    <p class="lead">No installer and no setup. Settings live in <code>%AppData%\FlexMeters</code>.</p>
+    <div class="grid">
+      <div class="card" style="--c: var(--slc)"><h3><b>1</b>Run it</h3><p>Download <code>FlexMeters.exe</code> and start it. Windows SmartScreen may ask once, because the exe is not code-signed yet.</p></div>
+      <div class="card" style="--c: var(--tx)"><h3><b>2</b>Connect</h3><p>Pick your radio from the list, or type its IP address, and press <b>Connect</b>. If several stations are on the radio, choose yours.</p></div>
+      <div class="card" style="--c: var(--cod)"><h3><b>3</b>Choose meters</h3><p>Open <b>☰ Meters</b>, tick what you want and drag to reorder. Click a bar to set a range. That's it.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="alt">
+  <div class="wrap">
+    <h2>Seen on real radios</h2>
+    <p class="lead">Checked receive-only against live radios on firmware v4.3.16 (15 October 2026). Their meter lists differ quite a lot, and FlexMeters shows whatever the radio announces.</p>
+    <div class="tested">
+      <div><b>FLEX-8600</b><span>12 meters with no GUI client: TX power, SWR, PA temperature and current, supply volts, fan, mic, FreeDV SNR.</span></div>
+      <div><b>Aurora AU-520</b><span>36 meters with Maestro attached: slice A signal (24kHz, ESC, LEVEL, AGC+), PA FET temperatures, PA efficiency, PA fault status, the full TX audio chain.</span></div>
+      <div><b class="todo">Still to check</b><span>Power readings while transmitting, amplifier meters (PGXL, Tuner Genius), and the Windows build on more PCs.</span></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>How it works</h2>
+    <p class="lead">For the curious and for anyone writing their own client. Everything here is checked against the FlexLib v4.3.15 API source; file and line citations are in <a href="https://github.com/va3mw/FlexMeters/blob/main/DECISIONS.md">DECISIONS.md</a>.</p>
+    <div class="tbl">
+      <table>
+        <tr><th>Step</th><th>What happens</th></tr>
+        <tr><td>Discovery</td><td>Radios broadcast a VITA-49 packet on UDP <code>4992</code> with <code>serial=… ip=… model=…</code>.</td></tr>
+        <tr><td>Connect</td><td>TCP <code>4992</code>, then <code>sub meter all</code>, <code>sub slice all</code>, <code>sub client all</code> and <code>client bind client_id=…</code>.</td></tr>
+        <tr><td>Meter list</td><td>Status lines like <code>meter 7.src=SLC#7.num=0#7.nam=LEVEL#7.unit=dBm#…</code> (fields are split on <code>#</code>), and <code>meter 7 removed</code>.</td></tr>
+        <tr><td>Values</td><td><code>client udpport &lt;port&gt;</code>, then VITA-49 packets of class <code>0x8002</code>, each holding big-endian <code>uint16</code> id + <code>int16</code> raw pairs.</td></tr>
+        <tr><td>Scaling</td><td>dB, dBm, dBFS and SWR ÷128 · Volts and Amps ÷256 · °C and °F ÷64 · Watts, %, RPM as sent. TX power arrives in dBm and is shown in watts.</td></tr>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section class="alt">
+  <div class="wrap">
+    <h2>Build from source</h2>
+    <p class="lead">Go and <a href="https://wails.io">Wails v2</a>. The Windows build cross-compiles from macOS or Linux, and no C compiler is needed.</p>
+<pre><span class="c"># tests</span>
+go test ./internal/...
+
+<span class="c"># Windows exe → build/bin/FlexMeters.exe</span>
+wails build -platform windows/amd64 -skipbindings
+
+<span class="c"># no radio handy? a fake one, plus the UI in any browser</span>
+go run ./tools/fakeradio -churn
+go run ./tools/preview          <span class="c"># http://127.0.0.1:34200</span></pre>
+    <div class="chips">
+      <span class="chip" style="--c: var(--slc)">Go</span>
+      <span class="chip" style="--c: var(--rad)">Wails v2</span>
+      <span class="chip" style="--c: var(--cod)">Plain HTML/JS UI</span>
+      <span class="chip" style="--c: var(--tx)">VITA-49</span>
+      <span class="chip" style="--c: var(--amp)">SmartSDR API</span>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <img src="logo.svg" alt="">Made by Michael VA3MW · <a href="https://github.com/va3mw/FlexMeters">github.com/va3mw/FlexMeters</a><br>
+    FlexRadio, SmartSDR and Maestro are trademarks of FlexRadio Systems.
+  </div>
+</footer>
+
+</body>
+</html>

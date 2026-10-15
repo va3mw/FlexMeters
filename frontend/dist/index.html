@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FlexMeters</title>
+<style>
+:root {
+  --bg: #12151b;
+  --bg2: #181c24;
+  --panel: #1d222c;
+  --row: #202633;
+  --row-hover: #262d3c;
+  --line: #2c3444;
+  --text: #dfe6f2;
+  --dim: #8592a8;
+  --faint: #566178;
+  --track: #141820;
+  --accent: #3fb6ff;
+  --ok: #3ddc84;
+  --warn: #ffc23d;
+  --bad: #ff5468;
+  /* group colours, by meter source */
+  --g-slc: #3fb6ff;
+  --g-tx: #ff8a3d;
+  --g-rad: #b48cff;
+  --g-cod: #3ddc84;
+  --g-amp: #ffc23d;
+  --g-other: #8aa0b8;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 12px/1.3 "Segoe UI", system-ui, -apple-system, sans-serif;
+  display: flex; flex-direction: column; overflow: hidden;
+  user-select: none;
+}
+button, select, input {
+  font: inherit; color: var(--text);
+  background: var(--panel); border: 1px solid var(--line); border-radius: 4px;
+  padding: 3px 7px; outline: none;
+}
+button { cursor: pointer; }
+button:hover { border-color: var(--accent); }
+button.primary { background: #1b4f7a; border-color: #2a6fa8; }
+input:focus, select:focus { border-color: var(--accent); }
+
+/* ---- top bar ---- */
+#top {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  padding: 6px 8px;
+  background: linear-gradient(180deg, #1e2533, #171c26);
+  border-bottom: 1px solid var(--line);
+}
+#top .brand { font-weight: 700; letter-spacing: .5px; margin-right: 4px;
+  background: linear-gradient(90deg, var(--g-slc), var(--g-rad) 60%, var(--g-tx));
+  -webkit-background-clip: text; background-clip: text; color: transparent; }
+#radioSel { max-width: 210px; }
+#ipIn { width: 118px; }
+#stationSel { max-width: 160px; }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--faint); flex: none; }
+.dot.on { background: var(--ok); box-shadow: 0 0 6px var(--ok); }
+.dot.wait { background: var(--warn); }
+#status { color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 60px; }
+#pickBtn.active { border-color: var(--accent); color: var(--accent); }
+
+/* ---- body ---- */
+#main { flex: 1; display: flex; min-height: 0; }
+#picker {
+  width: 250px; flex: none; display: flex; flex-direction: column;
+  background: var(--bg2); border-right: 1px solid var(--line);
+}
+#picker.hidden { display: none; }
+#picker .tools { padding: 6px; display: flex; gap: 4px; border-bottom: 1px solid var(--line); }
+#search { flex: 1; min-width: 0; }
+#groups { overflow-y: auto; flex: 1; padding-bottom: 8px; }
+.group h4 {
+  margin: 0; padding: 5px 8px 3px; font-size: 11px; text-transform: uppercase; letter-spacing: .6px;
+  color: var(--gc); border-left: 3px solid var(--gc);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--gc) 16%, transparent), transparent 70%);
+  display: flex; justify-content: space-between; align-items: center; cursor: pointer;
+}
+.group h4 small { color: var(--dim); font-weight: 400; text-transform: none; letter-spacing: 0; }
+.group.collapsed .items { display: none; }
+.item {
+  display: flex; align-items: center; gap: 6px; padding: 2px 8px 2px 12px; cursor: pointer;
+}
+.item:hover { background: var(--row-hover); }
+.item input { margin: 0; accent-color: var(--gc); }
+.item .nm { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.item .un { color: var(--faint); font-size: 11px; }
+.hint { color: var(--dim); padding: 10px; }
+.opt { padding: 6px 8px; color: var(--dim); border-top: 1px solid var(--line); display: flex; gap: 6px; align-items: center; }
+
+/* ---- meter rows ---- */
+#rows { flex: 1; overflow-y: auto; padding: 6px; display: flex; flex-direction: column; gap: 3px; }
+.row {
+  display: grid; grid-template-columns: 10px 44px minmax(70px, 130px) 1fr 70px 18px;
+  align-items: center; gap: 6px;
+  height: 24px; padding: 0 6px 0 2px;
+  background: var(--row); border-radius: 4px; border-left: 3px solid var(--gc);
+}
+.row:hover { background: var(--row-hover); }
+.row.drag-over { outline: 1px dashed var(--accent); }
+.row.off { opacity: .45; }
+.grip { color: var(--faint); cursor: grab; font-size: 10px; text-align: center; }
+.tag {
+  font-size: 10px; font-weight: 600; text-align: center; border-radius: 3px; padding: 1px 0;
+  color: var(--gc); background: color-mix(in srgb, var(--gc) 16%, transparent);
+  white-space: nowrap; overflow: hidden;
+}
+.lbl { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar { position: relative; height: 10px; background: var(--track); border-radius: 3px; overflow: hidden;
+  box-shadow: inset 0 0 0 1px #0007; cursor: pointer; }
+.fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; border-radius: 3px; transition: width 60ms linear; }
+.peak { position: absolute; top: 0; bottom: 0; width: 2px; background: #fff; opacity: .85; left: 0; }
+.val { text-align: right; font-variant-numeric: tabular-nums; font-family: "Cascadia Mono", Consolas, ui-monospace, monospace; }
+.val .u { color: var(--dim); font-size: 10px; margin-left: 3px; font-family: inherit; }
+.x { color: var(--faint); cursor: pointer; text-align: center; visibility: hidden; }
+.row:hover .x { visibility: visible; }
+.x:hover { color: var(--bad); }
+#empty { margin: auto; color: var(--dim); text-align: center; line-height: 1.6; }
+#empty b { color: var(--accent); }
+
+/* range editor popover */
+#rangePop {
+  position: fixed; z-index: 10; background: var(--panel); border: 1px solid var(--accent); border-radius: 6px;
+  padding: 8px; display: none; gap: 6px; align-items: center; box-shadow: 0 6px 20px #0009;
+}
+#rangePop input { width: 64px; }
+</style>
+</head>
+<body>
+<div id="top">
+  <span class="brand">FlexMeters</span>
+  <button id="pickBtn" title="Choose meters">☰ Meters</button>
+  <span class="dot" id="dot"></span>
+  <select id="radioSel" title="Radio"></select>
+  <input id="ipIn" placeholder="IP address" title="Radio IP (manual)">
+  <button id="connBtn" class="primary">Connect</button>
+  <select id="stationSel" title="SmartSDR station to follow"></select>
+  <span id="status"></span>
+</div>
+<div id="main">
+  <div id="picker">
+    <div class="tools">
+      <input id="search" placeholder="Filter meters…">
+      <button id="clearBtn" title="Remove all from view">Clear</button>
+    </div>
+    <div id="groups"></div>
+    <label class="opt"><input type="checkbox" id="allSlices"> Show other stations' slices</label>
+  </div>
+  <div id="rows"></div>
+</div>
+<div id="rangePop">
+  <span id="rpName"></span>
+  <input id="rpLo" type="number" step="any"> to <input id="rpHi" type="number" step="any">
+  <button id="rpSave" class="primary">Set</button>
+  <button id="rpReset">Default</button>
+</div>
+
+<script>
+const api = () => window.go.app.App;
+const $ = id => document.getElementById(id);
+
+let st = null;            // last State from Go
+let meters = new Map();   // key -> meter (resolved: newest index per key)
+let selected = [];        // keys in display order
+let pickerOpen = true;
+let showAllSlices = false;
+let rowEls = new Map();   // key -> {el, fill, peak, val, peakV, peakT}
+let lastVals = {};
+const collapsed = new Set();
+
+const GROUPS = {
+  SLC: { name: "Slice", css: "--g-slc", order: 0 },
+  TX:  { name: "Transmit", css: "--g-tx", order: 1 },
+  AMP: { name: "Amplifier", css: "--g-amp", order: 2 },
+  HAAPI: { name: "Amplifier (HA API)", css: "--g-amp", order: 3 },
+  RAD: { name: "Radio", css: "--g-rad", order: 4 },
+  COD: { name: "Codec / audio", css: "--g-cod", order: 5 },
+  PAN: { name: "Panadapter", css: "--g-slc", order: 6 },
+  EXT_WVF: { name: "Waveform", css: "--g-other", order: 7 },
+};
+
+// Forward/reflected power arrive in dBm (FLEX-8600 v4.3.16: FWDPWR, REFPWR
+// unit=dBm 0..53). Operators read watts, so convert for display.
+const dbmToW = d => Math.pow(10, (d - 30) / 10);
+const isPower = (src, m) => m.unit === "dBm" && src !== "SLC" && /PWR|FWD|REF/.test(m.name);
+
+// ---- meter identity ----
+// Meter indices change between sessions, so a selection is stored as a key:
+// slice meters by slice letter and name, everything else by source and name.
+// num is not used: for external meters (EXT_WVF, AMP) it is a client handle
+// that changes every session.
+function describe(m) {
+  const src = m.source.replace(/-+$/, "");
+  const g = GROUPS[src] || { name: src || "Other", css: "--g-other", order: 9 };
+  let key, group = g.name, tag = src, visible = true, sub = "";
+  if (src === "SLC") {
+    const sl = st.radio.slices.find(s => s.index === m.num);
+    const letter = sl && sl.letter ? sl.letter : "#" + m.num;
+    key = `SLC/${letter}/${m.name}`;
+    group = `Slice ${letter}`;
+    tag = letter;
+    const bound = st.radio.bound_handle;
+    if (sl && bound && sl.client_handle !== bound) {
+      visible = showAllSlices;
+      const owner = st.radio.stations.find(s => s.handle === sl.client_handle);
+      sub = owner ? owner.name : "other station";
+    }
+  } else {
+    key = `${src}/${m.name}`;
+  }
+  const watts = isPower(src, m);
+  return { ...m, key, group, tag, css: g.css, order: g.order, visible, sub,
+    unit: watts ? "Watts" : m.unit, conv: watts ? dbmToW : null,
+    low: watts ? 0 : m.low, high: watts ? Math.round(dbmToW(m.high)) : m.high, rawUnit: m.unit };
+}
+
+function resolveMeters() {
+  meters = new Map();
+  for (const raw of st.radio.meters) {
+    const m = describe(raw);
+    const old = meters.get(m.key);
+    // the radio streams only the newest of two same-named meters (Meter.cs FindNewestByName)
+    if (!old || m.index > old.index) meters.set(m.key, m);
+  }
+}
+
+// ---- display helpers ----
+function range(m) {
+  const r = st.config.ranges && st.config.ranges[m.key];
+  if (r) return [r.low, r.high];
+  if (m.unit === "SWR") return [1, 3];
+  let lo = m.low, hi = m.high;
+  if (!(hi > lo)) { lo = 0; hi = 100; }
+  return [lo, hi];
+}
+function decimals(m, v) {
+  switch (m.unit) {
+    case "SWR": case "Volts": return 2;
+    case "dB": case "dBm": case "dBFS": case "Amps": case "degC": case "degF": return 1;
+    case "Watts": return Math.abs(v) < 10 ? 1 : 0;
+  }
+  return Math.abs(v) < 10 && v % 1 ? 1 : 0;
+}
+const UNIT = { degC: "°C", degF: "°F", Percent: "%", Volts: "V", Amps: "A", Watts: "W", None: "", bits: "" };
+const unitLabel = u => (u in UNIT ? UNIT[u] : u);
+
+// bar colour: by unit, hotter as the bar fills
+function barColor(m, frac, v) {
+  if (m.unit === "SWR") return v < 1.5 ? "var(--ok)" : v < 2.5 ? "var(--warn)" : "var(--bad)";
+  if (m.unit === "degC" || m.unit === "degF") return `hsl(${190 - 190 * frac} 85% 55%)`;
+  if (m.unit === "Watts") return `linear-gradient(90deg, #ff6a2b, #ffb03d)`;
+  if (m.unit === "Volts") return `linear-gradient(90deg, #3d7bff, #6fb2ff)`;
+  if (m.unit === "Amps") return `linear-gradient(90deg, #8a5cff, #c08cff)`;
+  if (m.unit === "Percent") return `linear-gradient(90deg, #12b5a6, #3ddcc6)`;
+  // dB levels: green, then amber and red near the top
+  return frac > 0.9 ? "linear-gradient(90deg, #3ddc84, #ffc23d 80%, #ff5468)"
+       : frac > 0.75 ? "linear-gradient(90deg, #3ddc84, #ffc23d)"
+       : "linear-gradient(90deg, #1fa865, #3ddc84)";
+}
+
+// ---- top bar ----
+function renderTop() {
+  const r = st.radio, sel = $("radioSel");
+  const cur = st.config.radio_serial;
+  const opts = [`<option value="">${st.radios.length ? "Select radio…" : "No radios found"}</option>`]
+    .concat(st.radios.map(x =>
+      `<option value="${x.serial}" ${x.serial === cur ? "selected" : ""}>${esc(x.nickname || x.model)} · ${x.model} · ${x.ip}</option>`));
+  if (sel.dataset.sig !== opts.join()) { sel.innerHTML = opts.join(""); sel.dataset.sig = opts.join(); }
+  if (document.activeElement !== $("ipIn") && !$("ipIn").value) $("ipIn").value = st.config.radio_ip || "";
+
+  const active = !!r.ip;
+  $("connBtn").textContent = active ? "Disconnect" : "Connect";
+  $("connBtn").classList.toggle("primary", !active);
+  $("dot").className = "dot " + (r.connected ? "on" : active ? "wait" : "");
+
+  const ss = $("stationSel");
+  const sopts = [`<option value="">${r.stations.length ? "Auto station" : "No stations"}</option>`]
+    .concat(r.stations.map(s => `<option ${s.name === st.config.station ? "selected" : ""}>${esc(s.name)}</option>`));
+  if (ss.dataset.sig !== sopts.join()) { ss.innerHTML = sopts.join(""); ss.dataset.sig = sopts.join(); }
+  ss.value = st.config.station || "";
+
+  let s;
+  if (r.connected) {
+    s = `${r.nickname || r.model} · ${meters.size} meters`;
+    s += r.bound_station ? ` · following ${r.bound_station}` : " · no station bound";
+    if (r.packets === 0) s += " · waiting for meter data";
+  } else s = active ? `Connecting to ${r.ip}…` : "Not connected";
+  $("status").textContent = s;
+  $("status").title = r.connected ? `UDP ${r.udp_port}, ${r.packets} meter packets, API ${r.version}` : "";
+  $("pickBtn").classList.toggle("active", pickerOpen);
+  $("picker").classList.toggle("hidden", !pickerOpen);
+}
+
+// ---- picker ----
+function renderPicker() {
+  const q = $("search").value.trim().toLowerCase();
+  const groups = new Map();
+  for (const m of meters.values()) {
+    if (!m.visible) continue;
+    if (q && !(`${m.name} ${m.desc} ${m.group}`.toLowerCase().includes(q))) continue;
+    if (!groups.has(m.group)) groups.set(m.group, { css: m.css, order: m.order, sub: m.sub, list: [] });
+    groups.get(m.group).list.push(m);
+  }
+  const sorted = [...groups.entries()].sort((a, b) => a[1].order - b[1].order || a[0].localeCompare(b[0]));
+  if (!sorted.length) {
+    $("groups").innerHTML = `<div class="hint">${st.radio.connected ? (q ? "No match." : "Waiting for meters…") : "Connect to a radio to list its meters."}</div>`;
+    return;
+  }
+  const sel = new Set(selected);
+  $("groups").innerHTML = sorted.map(([name, g]) => {
+    g.list.sort((a, b) => a.name.localeCompare(b.name));
+    const n = g.list.filter(m => sel.has(m.key)).length;
+    return `<div class="group ${collapsed.has(name) ? "collapsed" : ""}" style="--gc: var(${g.css})">
+      <h4 data-g="${esc(name)}">${esc(name)}${g.sub ? " · " + esc(g.sub) : ""} <small>${n}/${g.list.length}</small></h4>
+      <div class="items">${g.list.map(m => `
+        <label class="item" title="${esc(m.desc || m.name)} (${m.source} #${m.index})">
+          <input type="checkbox" data-k="${esc(m.key)}" ${sel.has(m.key) ? "checked" : ""}>
+          <span class="nm">${esc(m.name)}</span><span class="un">${esc(unitLabel(m.unit))}</span>
+        </label>`).join("")}</div></div>`;
+  }).join("");
+}
+
+$("groups").addEventListener("change", e => {
+  const k = e.target.dataset.k;
+  if (!k) return;
+  if (e.target.checked) { if (!selected.includes(k)) selected.push(k); }
+  else selected = selected.filter(x => x !== k);
+  layoutChanged();
+});
+$("groups").addEventListener("click", e => {
+  const h = e.target.closest("h4");
+  if (!h) return;
+  const g = h.dataset.g;
+  collapsed.has(g) ? collapsed.delete(g) : collapsed.add(g);
+  h.parentElement.classList.toggle("collapsed");
+});
+$("search").addEventListener("input", renderPicker);
+$("clearBtn").onclick = () => { selected = []; layoutChanged(); };
+$("allSlices").onchange = e => { showAllSlices = e.target.checked; refresh(); };
+
+// ---- rows ----
+function renderRows() {
+  const box = $("rows");
+  rowEls = new Map();
+  if (!selected.length) {
+    box.innerHTML = `<div id="empty">No meters selected.<br>Open <b>☰ Meters</b> and tick the ones you want.<br><span style="color:var(--faint)">Drag rows to reorder · click a bar to set its range</span></div>`;
+    return;
+  }
+  box.innerHTML = "";
+  for (const k of selected) {
+    const m = meters.get(k);
+    const name = m ? m.name : k.split("/").pop();
+    const g = m ? m : describeKey(k);
+    const el = document.createElement("div");
+    el.className = "row" + (m ? "" : " off");
+    el.draggable = true;
+    el.dataset.k = k;
+    el.style.setProperty("--gc", `var(${g.css})`);
+    el.title = m ? `${m.desc || m.name}\n${m.group} · ${m.source} #${m.index} · range ${range(m).join(" to ")} ${m.unit}${m.conv ? " (radio sends dBm)" : ""}` : "Not available on the radio right now";
+    el.innerHTML = `<span class="grip">⋮⋮</span><span class="tag">${esc(g.tag)}</span>
+      <span class="lbl">${esc(name)}</span>
+      <div class="bar"><div class="fill"></div><div class="peak"></div></div>
+      <span class="val">${m ? "—" : "n/a"}</span><span class="x" title="Remove">✕</span>`;
+    box.appendChild(el);
+    rowEls.set(k, { el, m, fill: el.querySelector(".fill"), peak: el.querySelector(".peak"),
+      val: el.querySelector(".val"), peakV: null, peakT: 0 });
+  }
+  if (Object.keys(lastVals).length) onValues(lastVals);
+}
+
+// group/tag for a selected key whose meter is absent (e.g. slice closed)
+function describeKey(k) {
+  const p = k.split("/");
+  const g = GROUPS[p[0]] || { css: "--g-other" };
+  return { css: g.css, tag: p[0] === "SLC" ? p[1] : p[0] };
+}
+
+$("rows").addEventListener("click", e => {
+  const row = e.target.closest(".row");
+  if (!row) return;
+  if (e.target.classList.contains("x")) {
+    selected = selected.filter(x => x !== row.dataset.k);
+    layoutChanged();
+  } else if (e.target.closest(".bar")) {
+    openRange(row.dataset.k, e.clientX, e.clientY);
+  }
+});
+
+// drag to reorder
+let dragKey = null;
+$("rows").addEventListener("dragstart", e => { const r = e.target.closest(".row"); if (r) { dragKey = r.dataset.k; e.dataTransfer.effectAllowed = "move"; } });
+$("rows").addEventListener("dragover", e => {
+  const r = e.target.closest(".row"); if (!r || !dragKey) return;
+  e.preventDefault();
+  document.querySelectorAll(".drag-over").forEach(x => x.classList.remove("drag-over"));
+  r.classList.add("drag-over");
+});
+$("rows").addEventListener("drop", e => {
+  const r = e.target.closest(".row"); if (!r || !dragKey) return;
+  e.preventDefault();
+  const to = r.dataset.k;
+  if (to !== dragKey) {
+    selected = selected.filter(x => x !== dragKey);
+    selected.splice(selected.indexOf(to), 0, dragKey);
+    layoutChanged();
+  }
+  dragKey = null;
+});
+$("rows").addEventListener("dragend", () => { dragKey = null; document.querySelectorAll(".drag-over").forEach(x => x.classList.remove("drag-over")); });
+
+// ---- live values ----
+function onValues(vals) {
+  lastVals = vals;
+  const now = performance.now();
+  for (const [k, r] of rowEls) {
+    const m = r.m;
+    if (!m) continue;
+    let v = vals[m.index];
+    if (v !== undefined && m.conv) v = m.conv(v);
+    if (v === undefined) { r.val.innerHTML = "—"; r.fill.style.width = "0"; r.peak.style.display = "none"; continue; }
+    if (m.unit === "bits") {
+      // a status word (AU-520 PASTAT "PA Fault Status"): show hex, bar lit red if any bit is set
+      const n = Math.round(v) & 0xFFFF;
+      r.val.innerHTML = "0x" + n.toString(16).toUpperCase().padStart(2, "0");
+      r.fill.style.width = n ? "100%" : "0";
+      r.fill.style.background = "var(--bad)";
+      r.peak.style.display = "none";
+      continue;
+    }
+    const [lo, hi] = range(m);
+    const frac = Math.max(0, Math.min(1, (v - lo) / (hi - lo)));
+    r.fill.style.width = (frac * 100).toFixed(1) + "%";
+    r.fill.style.background = barColor(m, frac, v);
+    // peak: hold 1.5 s, then fall at 40% of full scale per second
+    if (r.peakV === null || frac >= r.peakV) { r.peakV = frac; r.peakT = now; }
+    else if (now - r.peakT > 1500) r.peakV = Math.max(frac, r.peakV - 0.4 * (1000 / 15) / 1000);
+    r.peak.style.display = "";
+    r.peak.style.left = `calc(${(r.peakV * 100).toFixed(1)}% - 2px)`;
+    r.val.innerHTML = `${v.toFixed(decimals(m, v))}<span class="u">${esc(unitLabel(m.unit))}</span>`;
+  }
+}
+
+// ---- range popover ----
+let rangeKey = null;
+function openRange(k, x, y) {
+  const m = meters.get(k);
+  if (!m) return;
+  rangeKey = k;
+  const [lo, hi] = range(m);
+  $("rpName").textContent = `${m.tag} ${m.name}`;
+  $("rpLo").value = lo; $("rpHi").value = hi;
+  const p = $("rangePop");
+  p.style.display = "flex";
+  p.style.left = Math.min(x, innerWidth - p.offsetWidth - 8) + "px";
+  p.style.top = Math.min(y + 10, innerHeight - p.offsetHeight - 8) + "px";
+  $("rpLo").focus();
+}
+function closeRange() { $("rangePop").style.display = "none"; rangeKey = null; }
+$("rpSave").onclick = async () => {
+  const lo = parseFloat($("rpLo").value), hi = parseFloat($("rpHi").value);
+  if (rangeKey && hi > lo) { await api().SetRange(rangeKey, lo, hi); st.config.ranges[rangeKey] = { low: lo, high: hi }; renderRows(); }
+  closeRange();
+};
+$("rpReset").onclick = async () => {
+  if (rangeKey) { await api().SetRange(rangeKey, 0, 0); delete st.config.ranges[rangeKey]; renderRows(); }
+  closeRange();
+};
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") closeRange();
+  if (e.key === "Enter" && rangeKey) $("rpSave").click();
+});
+document.addEventListener("mousedown", e => { if (rangeKey && !e.target.closest("#rangePop")) closeRange(); });
+
+// ---- wiring ----
+function layoutChanged() {
+  api().SaveLayout(selected, pickerOpen);
+  refresh();
+}
+function refresh() {
+  if (!st) return;
+  resolveMeters();
+  renderTop();
+  renderPicker();
+  renderRows();
+  const ids = selected.map(k => meters.get(k)).filter(Boolean).map(m => m.index);
+  api().SetWanted(ids);
+}
+let lastSig = "";
+function onState(s) {
+  st = s;
+  // rebuild only when something the layout depends on changed
+  const sig = JSON.stringify([s.radio.meters, s.radio.slices, s.radio.bound_handle, s.radio.stations, s.config.ranges]);
+  if (sig !== lastSig) { lastSig = sig; refresh(); }
+  else renderTop();
+}
+
+$("connBtn").onclick = () => {
+  if (st && st.radio.ip) { api().Disconnect(); return; }
+  const serial = $("radioSel").value;
+  api().Connect(serial, serial ? "" : $("ipIn").value.trim());
+};
+$("radioSel").onchange = e => {
+  const r = st.radios.find(x => x.serial === e.target.value);
+  if (r) $("ipIn").value = r.ip;
+};
+$("stationSel").onchange = e => api().SelectStation(e.target.value);
+$("pickBtn").onclick = () => { pickerOpen = !pickerOpen; api().SaveLayout(selected, pickerOpen); renderTop(); };
+
+function esc(s) { return String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+
+window.addEventListener("load", async () => {
+  const s = await api().GetState();
+  selected = s.config.selected || [];
+  pickerOpen = s.config.picker_open;
+  onState(s);
+  window.runtime.EventsOn("state", onState);
+  window.runtime.EventsOn("values", onValues);
+  setInterval(async () => onState(await api().GetState()), 2000); // keeps packet count fresh
+});
+</script>
+</body>
+</html>
