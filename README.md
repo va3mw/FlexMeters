@@ -48,3 +48,7 @@ docs/                   GitHub Pages site
 tools/fakeradio         radio simulator for testing
 tools/preview           browser preview harness
 ```
+
+## License
+
+MIT. See [LICENSE](LICENSE).
